@@ -1,4 +1,4 @@
-public with sharing class OrderHelper {
+public without sharing class OrderHelper {
 
     /**
      * @name AfterUpdate
@@ -10,7 +10,7 @@ public with sharing class OrderHelper {
     public static void AfterUpdate(List<Order> newList, List<Order> oldList){
         Set<Id> orderIds = new Set<Id>();
         for ( Integer i = 0; i < newList.size(); i++ ){
-            if ( newList[i].Status == 'Activation' && oldList[i].Status != 'Activate' ){
+            if ( newList[i].Status == Constants.ACTIVATED_ORDER_STATUS && oldList[i].Status != Constants.ACTIVATED_ORDER_STATUS ){
                 orderIds.add(newList[i].Id);
             }
         }
@@ -25,14 +25,23 @@ public with sharing class OrderHelper {
     **/
     public static void RollUpOrderItems(Set<Id> activatedOrderIds){
         Map<Id, Product2> productMap = new Map<Id, Product2>();
-        
-        //ToDo: Loop through a query of OrderItems related to the activatedOrderIds
-
-            //ToDo: Populate the map with the Id of the related Product2 as the key and Product2 record as the value
-
-        //ToDo: Loop through a query that aggregates the OrderItems related to the Products in the ProductMap keyset
-
-        //ToDo: Perform an update on the records in the productMap
+        for (OrderItem item : [
+                SELECT Id, Product2Id, Product2.Quantity_Ordered__c, Quantity, OrderId
+                FROM OrderItem
+                WHERE OrderId IN :activatedOrderIds
+        ]) {
+            productMap.put(item.Product2Id, item.Product2);
+        }
+        for (AggregateResult orderResult : [
+                SELECT Product2Id, SUM(Quantity)
+                FROM OrderItem
+                WHERE Product2Id IN :productMap.keySet()
+                GROUP BY Product2Id
+        ]) {
+            Id productId = (Id) orderResult.get('Product2Id');
+            productMap.get(productId).Quantity_Ordered__c = (Decimal) orderResult.get('expr0');
+        }
+        update productMap.values();
     }
 
 }

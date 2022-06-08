@@ -38,4 +38,13 @@ private class Product2Tests {
         List<Product2> products = [SELECT Id FROM Product2];
         System.assertEquals(2, products.size());
     }
+
+    @IsTest
+    private static void Product2Trigger_UnitTest() {
+        Test.startTest();
+        Product2 product = [SELECT Name, Family, IsActive, Quantity_Ordered__c, Initial_Inventory__c FROM Product2 LIMIT 1];
+        product.Quantity_Ordered__c = 5;
+        update product;
+        Test.stopTest();
+    }
 }
